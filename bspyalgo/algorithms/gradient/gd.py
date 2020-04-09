@@ -76,9 +76,9 @@ class GD:
 
         if save_data and 'results_base_dir' in self.configs:
             self.init_dirs(self.configs['results_base_dir'])
+        self.reset()
         if 'debug' in self.processor.configs and self.processor.configs['debug'] and self.processor.configs['architecture'] == 'device_architecture':
             self.processor.init_dirs(self.configs['results_base_dir'])
-        self.reset()
 
         if data_info is not None:
             # This case is only used when using the GD for creating a new model
