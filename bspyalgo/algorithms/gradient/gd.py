@@ -3,6 +3,7 @@ import torch
 import os
 from tqdm import trange
 from bspyproc.bspyproc import get_processor
+from bspyproc.utils.pytorch import TorchUtils
 from bspyalgo.utils.io import save, create_directory, create_directory_timestamp
 from bspyalgo.algorithms.gradient.core.data import GDData
 from bspyalgo.algorithms.gradient.core.optim import get_optimizer
@@ -91,6 +92,7 @@ class GD:
             except AttributeError:
                 self.processor.info = {}
                 print('The model has been generated from scratch as a torch_model')
+                self.processor = TorchUtils.format_tensor(self.processor)
                 self.processor.info['data_info'] = data_info
                 self.processor.info['smg_configs'] = self.configs
 
