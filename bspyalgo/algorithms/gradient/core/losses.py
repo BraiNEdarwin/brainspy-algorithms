@@ -18,21 +18,11 @@ def choose_loss_function(loss_fn_name):
     elif loss_fn_name == 'fisher_multipled_corr':
         return fisher_multipled_corr
     elif loss_fn_name == 'bce':
-        bce = BCELossWithSigmoid()
+        bce = torch.nn.BCELoss()
         bce.cuda(TorchUtils.get_accelerator_type()).to(TorchUtils.data_type)
         return bce
     else:
         raise NotImplementedError(f"Loss function {loss_fn_name} is not recognized!")
-
-
-class BCELossWithSigmoid(torch.nn.BCELoss):
-
-    def __init__(self, weight=None, size_average=None, reduce=None, reduction='mean', activation=torch.nn.Sigmoid()):
-        super(BCELossWithSigmoid, self).__init__(weight=weight, size_average=size_average, reduce=reduce, reduction=reduction)
-        self.activation = activation
-
-    def forward(self, output, target):
-        return super(BCELossWithSigmoid, self).forward(self.activation(output[:, 0]), target)
 
 
 def corrsig(output, target):
