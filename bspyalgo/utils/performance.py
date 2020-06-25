@@ -79,8 +79,9 @@ def decision(data, targets, lrn_rate=0.007, mini_batch=8, max_iters=100, validat
 def perceptron(input_waveform, target_waveform, plot=None):
     # Assumes that the input_waveform and the target_waveform have the shape (n_total,1)
     # Normalizes the data; it is assumed that the target_waveform has binary values
-    input_waveform = (input_waveform - np.mean(input_waveform, axis=0)) / np.std(input_waveform, axis=0)
-    _accuracy, predicted_labels, threshold = decision(input_waveform, target_waveform)
+    normalized_input_waveform = (input_waveform - np.mean(input_waveform, axis=0)) / np.std(input_waveform, axis=0)
+    _accuracy, predicted_labels, normalized_threshold = decision(normalized_input_waveform, target_waveform)
+    threshold = normalized_threshold * np.std(input_waveform, axis=0) + np.mean(input_waveform, axis=0)
     if plot:
         plt.figure()
         plt.title(f'Accuracy: {_accuracy:.2f} %')
