@@ -120,8 +120,8 @@ class GD:
             running_loss = 0
 
             for inputs, targets in dataloaders[0]:
-                inputs = inputs.squeeze()
-                targets = targets.squeeze()
+                #inputs = inputs.squeeze()
+                #targets = targets.squeeze()
 
                 optimizer.zero_grad()
 

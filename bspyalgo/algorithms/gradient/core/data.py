@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from bspyproc.processors.simulation.dopanet import DNPU
+#from bspyproc.processors.simulation.dopanet import DNPU
 from bspyproc.utils.pytorch import TorchUtils
 
 
