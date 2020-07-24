@@ -9,6 +9,8 @@ from bspyalgo.algorithms.gradient.core.data import GDData
 from bspyalgo.algorithms.gradient.core.optim import get_optimizer
 from bspyalgo.algorithms.gradient.core.losses import choose_loss_function
 
+from bspyalgo.utils.performance import accuracy
+
 
 class GD:
     """
@@ -136,11 +138,10 @@ class GD:
                 running_loss += loss.item()
 
             train_losses.append(running_loss / len(dataloaders[0]))
-            description = "Epoch: {}/{}.. ".format(epoch + 1, epochs) + "Training Loss: {:.3f}.. ".format(train_losses[-1])
+            description = "Training Loss: {:.3f}.. ".format(train_losses[-1])
 
             if dataloaders[1] is not None:
                 val_loss = 0
-                accuracy = 0
 
                 with torch.no_grad():
                     model.eval()
@@ -151,12 +152,21 @@ class GD:
                 model.train()
 
                 val_losses.append(val_loss / len(dataloaders[1]))
-                description = description + "Test Loss: {:.3f}.. ".format(val_losses[-1]) + "Test Accuracy: {:.3f}".format(accuracy / len(valloader))
+                description = description + "Test Loss: {:.3f}.. ".format(val_losses[-1])
+
             looper.set_description(description)
 
             # Add a save instruction
             if self.stopping_criteria(train_losses, val_losses):
                 break
+        return model, train_losses, val_losses
+
+    # def test_model(self, model, dataloader):
+    #     all_predictions, all_targets = [], []
+    #     with torch.no_grad():
+    #         model.eval()
+    #         for inputs, targets in dataloader:
+    #             predictions = model(inputs)
 
     def stopping_criteria(self, train_losses, val_losses):
         return False
