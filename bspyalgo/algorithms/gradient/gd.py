@@ -115,52 +115,6 @@ class GD:
             save(mode='pickle', file_path=os.path.join(self.default_output_dir, 'results.pickle'), data=data.results)
         return data
 
-    def train(self, model, dataloaders, epochs, criterion, optimizer):
-        train_losses, val_losses = [], []
-        looper = trange(epochs, desc=' Initialising')
-        for epoch in looper:
-            running_loss = 0
-
-            for inputs, targets in dataloaders[0]:
-                #inputs = inputs.squeeze()
-                #targets = targets.squeeze()
-
-                optimizer.zero_grad()
-
-                predictions = model(inputs)
-                loss = criterion(predictions, targets)
-                if 'regularizer' in dir(model):
-                    loss = loss + model.regularizer()
-
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
-
-            train_losses.append(running_loss / len(dataloaders[0]))
-            description = "Training Loss: {:.3f}.. ".format(train_losses[-1])
-
-            if dataloaders[1] is not None:
-                val_loss = 0
-
-                with torch.no_grad():
-                    model.eval()
-                    for inputs, targets in dataloaders[1]:
-                        predictions = model(inputs)
-                        val_loss += criterion(predictions, targets)
-
-                model.train()
-
-                val_losses.append(val_loss / len(dataloaders[1]))
-                description = description + "Test Loss: {:.3f}.. ".format(val_losses[-1])
-
-            looper.set_description(description)
-
-            # Add a save instruction
-            if self.stopping_criteria(train_losses, val_losses):
-                break
-        return model, train_losses, val_losses
-
     # def test_model(self, model, dataloader):
     #     all_predictions, all_targets = [], []
     #     with torch.no_grad():
