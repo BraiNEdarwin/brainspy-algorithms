@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from more_itertools import grouper
 from tqdm import trange
 from bspyproc.utils.pytorch import TorchUtils
+import os
 
 
 def batch_generator(nr_samples, batch):
@@ -27,7 +28,7 @@ def batch_generator(nr_samples, batch):
             return
 
 
-def decision(data, targets, lrn_rate=0.0007, mini_batch=8, max_iters=100, validation=False, verbose=True):
+def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=100, validation=False, verbose=True):
 
     if validation:
         n_total = len(data)
@@ -36,17 +37,16 @@ def decision(data, targets, lrn_rate=0.0007, mini_batch=8, max_iters=100, valida
         shuffle = np.random.permutation(n_total)
         indices_train = shuffle[n_val:]
         indices_val = shuffle[:n_val]
-        x_train = torch.tensor(data[indices_train], dtype=TorchUtils.data_type)
-        t_train = torch.tensor(targets[indices_train], dtype=TorchUtils.data_type)
-        x_val = torch.tensor(data[indices_val], dtype=TorchUtils.data_type)
-        t_val = torch.tensor(targets[indices_val], dtype=TorchUtils.data_type)
+        x_train = data[indices_train]
+        t_train = targets[indices_train]
+        x_val = data[indices_val]
+        t_val = targets[indices_val]
     else:
-        x_train = torch.tensor(data, dtype=TorchUtils.data_type)
-        t_train = torch.tensor(targets, dtype=TorchUtils.data_type)
-        x_val = torch.tensor(data, dtype=TorchUtils.data_type)
-        t_val = torch.tensor(targets, dtype=TorchUtils.data_type)
-
-    node = nn.Linear(1, 1).type(TorchUtils.data_type)
+        data = x_train = x_val = data
+        targets = t_train = t_val = targets
+    if node is None:
+        node = nn.Linear(1, 1)
+    node = TorchUtils.format_tensor(node)
     loss = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(node.parameters(), lr=lrn_rate, betas=(0.999, 0.999))
     best_accuracy = -1
@@ -62,163 +62,113 @@ def decision(data, targets, lrn_rate=0.0007, mini_batch=8, max_iters=100, valida
         with torch.no_grad():
             y = node(x_val)
             labels = y > 0.
-            correct_labeled = torch.sum(labels == t_val).detach().numpy()
+            correct_labeled = torch.sum(labels == t_val)
             acc = 100. * correct_labeled / len(t_val)
             if acc > best_accuracy:
                 best_accuracy = acc
                 with torch.no_grad():
-                    w, b = [p.detach().numpy() for p in node.parameters()]
+                    w, b = [p for p in node.parameters()]
                     decision_boundary = -b / w
-                    predicted_class = node(torch.tensor(data, dtype=TorchUtils.data_type)).detach().numpy() > 0.
+                    prediction = node(data)
+                    predicted_class = prediction > 0.
         if verbose:
             looper.set_description(f' Epoch: {epoch}  Accuracy {acc}, loss: {cost.item()}')
 
     return best_accuracy, predicted_class, decision_boundary, node
 
 
-def decision_pretrained(data, targets, node, validation=False, verbose=True):
-    if validation:
-        n_total = len(data)
-        assert n_total > 10, "Not enough data, we assume you have at least 10 points"
-        n_val = int(n_total * 0.1)
-        shuffle = np.random.permutation(n_total)
-        indices_train = shuffle[n_val:]
-        indices_val = shuffle[:n_val]
-        x_val = torch.tensor(data[indices_val], dtype=TorchUtils.data_type)
-        t_val = torch.tensor(targets[indices_val], dtype=TorchUtils.data_type)
-    else:
-        x_val = torch.tensor(data, dtype=TorchUtils.data_type)
-        t_val = torch.tensor(targets, dtype=TorchUtils.data_type)
-    with torch.no_grad():
-        w, b = [p.detach().numpy() for p in node.parameters()]
-        decision_boundary = -b / w
+# def decision_pretrained(data, targets, node, validation=False, verbose=True):
+#     if validation:
+#         n_total = len(data)
+#         assert n_total > 10, "Not enough data, we assume you have at least 10 points"
+#         n_val = int(n_total * 0.1)
+#         shuffle = np.random.permutation(n_total)
+#         indices_train = shuffle[n_val:]
+#         indices_val = shuffle[:n_val]
+#         x_val = torch.tensor(data[indices_val], dtype=TorchUtils.data_type)
+#         t_val = torch.tensor(targets[indices_val], dtype=TorchUtils.data_type)
+#     else:
+#         data = x_train = x_val = TorchUtils.format_tensor(torch.tensor(data))
+#         targets = t_train = t_val = TorchUtils.format_tensor(targets)
+#     with torch.no_grad():
+#         w, b = [p.detach().numpy() for p in node.parameters()]
+#         decision_boundary = -b / w
 
-    best_accuracy = -1
-    # looper = trange(max_iters, desc='Calculating accuracy')
-    with torch.no_grad():
-        y = node(x_val)
-        labels = y > 0.
-        correct_labeled = torch.sum(labels == t_val).detach().numpy()
-        acc = 100. * correct_labeled / len(t_val)
-        if acc > best_accuracy:
-            best_accuracy = acc
-            with torch.no_grad():
-                w, b = [p.detach().numpy() for p in node.parameters()]
-                decision_boundary = -b / w
-                predicted_class = node(torch.tensor(data, dtype=TorchUtils.data_type)).detach().numpy() > 0.
-        # if verbose:
-        #    looper.set_description(f' Epoch: {epoch}  Accuracy {acc}, loss: {cost.item()}')
+#     best_accuracy = -1
+#     # looper = trange(max_iters, desc='Calculating accuracy')
+#     with torch.no_grad():
+#         y = node(x_val)
+#         labels = y > 0.
+#         correct_labeled = torch.sum(labels == t_val).detach().numpy()
+#         acc = 100. * correct_labeled / len(t_val)
+#         if acc > best_accuracy:
+#             best_accuracy = acc
+#             with torch.no_grad():
+#                 w, b = [p.detach().numpy() for p in node.parameters()]
+#                 decision_boundary = -b / w
+#                 predicted_class = node(torch.tensor(data, dtype=TorchUtils.data_type)).detach().numpy() > 0.
+#         # if verbose:
+#         #    looper.set_description(f' Epoch: {epoch}  Accuracy {acc}, loss: {cost.item()}')
 
-    return best_accuracy, predicted_class, decision_boundary, node
+#     return best_accuracy, predicted_class, decision_boundary, node
 
 
-def perceptron(input_waveform, target_waveform, plot=None, node=None):
+def perceptron(inputs, targets, node=None):
     # Assumes that the input_waveform and the target_waveform have the shape (n_total,1)
     # Normalizes the data; it is assumed that the target_waveform has binary values
-    if isinstance(input_waveform, torch.Tensor):
-        input_waveform = input_waveform.detach().cpu().numpy()
+    # if isinstance(input_waveform, torch.Tensor):
+    #     input_waveform = input_waveform.detach().cpu().numpy()
+    inputs = TorchUtils.format_tensor(inputs)
+    targets = TorchUtils.format_tensor(targets)
 
-    original_input_waveform = input_waveform.copy()
-    input_waveform = (input_waveform - np.mean(input_waveform, axis=0)) / np.std(input_waveform, axis=0)
+    results = {}
+    assert len(inputs.shape) != 1 and len(targets.shape) != 1, "Please unsqueeze inputs and targets"
+    original_input_waveform = inputs.clone()
+    inputs = (inputs - torch.mean(inputs, axis=0)) / torch.std(inputs, axis=0)
     if node is None:
-        _accuracy, predicted_labels, threshold, node = decision(input_waveform, target_waveform)
-    else:
-        _accuracy, predicted_labels, threshold, _ = decision_pretrained(input_waveform, target_waveform, node)
-    if plot:
-        plt.figure()
-        plt.title(f'Accuracy: {_accuracy:.2f} %')
-        plt.plot(input_waveform, label='Norm. Waveform')
-        plt.plot(predicted_labels, '.', label='Predicted labels')
-        plt.plot(target_waveform, 'g', label='Targets')
-        plt.plot(np.arange(len(predicted_labels)),
-                 np.ones_like(predicted_labels) * threshold, 'k:', label='Threshold')
-        plt.legend()
-        if plot == 'show':
-            plt.show()
-        else:
-            np.savez(plot + 'accuracy_results', original_input_waveform=original_input_waveform, norm_input_waveform=input_waveform, predicted_labels=predicted_labels, target_waveform=target_waveform, threshold=threshold, accuracy=_accuracy)
-            plt.savefig(plot)
-            plt.close()
-    return _accuracy, predicted_labels, threshold, node
+        _accuracy, predictions, threshold, node = decision(inputs, targets, node)
+
+    results['inputs'] = original_input_waveform
+    results['norm_inputs'] = inputs
+    results['targets'] = targets
+    results['predictions'] = predictions
+    results['threshold'] = threshold
+    results['node'] = node
+    results['accuracy_value'] = _accuracy
+
+    return results  # _accuracy, predictions, threshold, node
+
+
+def plot_perceptron(results, save_dir=None, show_plot=False):
+    fig = plt.figure()
+    plt.title(f"Accuracy: {results['accuracy_value']:.2f} %")
+    plt.plot(TorchUtils.get_numpy_from_tensor(results['norm_inputs']), label='Norm. Waveform')
+    plt.plot(TorchUtils.get_numpy_from_tensor(results['predictions']), '.', label='Predicted labels')
+    plt.plot(TorchUtils.get_numpy_from_tensor(results['targets']), 'g', label='Targets')
+    plt.plot(np.arange(len(results['predictions'])),
+             TorchUtils.get_numpy_from_tensor(torch.ones_like(results['predictions']) * results['threshold']), 'k:', label='Threshold')
+    plt.legend()
+    if show_plot:
+        plt.show()
+    if save_dir is not None:
+        plt.savefig(os.path.join(save_dir, 'accuracy.jpg'))
+    plt.close()
+    return fig
 
 
 def corr_coeff(x, y):
     return np.corrcoef(np.concatenate((x, y), axis=0))[0, 1]
 
+
+def corr_coeff_torch(x, y):
+    x = TorchUtils.get_numpy_from_tensor(x)
+    y = TorchUtils.get_numpy_from_tensor(y)
+    result = np.corrcoef(np.concatenate((x, y), axis=0))[0, 1]
+    return TorchUtils.get_tensor_from_numpy(result)
+
 # TODO: use data object to get the accuracy (see corr_coeff above)
 
 
-def accuracy(best_output, target_waveforms, plot=None, node=None, return_node=False):
-    if len(best_output.shape) == 1:
-        y = best_output[:, np.newaxis]
-    else:
-        y = best_output
-    if len(target_waveforms.shape) == 1:
-        trgt = target_waveforms[:, np.newaxis]
-    else:
-        trgt = target_waveforms
-    if node is None:
-        acc, _, _, node = perceptron(y, trgt, plot=plot)
-    else:
-        acc, _, _, _ = perceptron(y, trgt, plot=plot, node=node)
-    if return_node:
-        return acc, node
-    else:
-        return acc
-
-
-if __name__ == '__main__':
-
-    # import pickle as pkl
-
-    # data_dict = pkl.load(open("tmp/input/best_output_ring_example.pkl", 'rb'))
-    # BEST_OUTPUT = data_dict['best_output']
-    # TARGETS = np.zeros_like(BEST_OUTPUT)
-    # TARGETS[int(len(BEST_OUTPUT) / 2):] = 1
-    # ACCURACY, LABELS, THRESHOLD = perceptron(BEST_OUTPUT, TARGETS, plot='show')
-
-    # MASK = np.ones_like(TARGETS, dtype=bool)
-    # ACC = accuracy(BEST_OUTPUT, TARGETS)
-    # print(f'Accuracy for best output: {ACC}')
-    import os
-    import matplotlib.pyplot as plt
-
-    arch = 'single'
-    if arch == 'multiple':
-        main_folder = '/home/unai/Documents/3-programming/brainspy-tasks/tmp/output/ring_nips/searcher_0.00625mV_2020_04_14_181433_multiple/validation.old/validation_2020_04_15_110246_training_data'
-        test_data = np.load(os.path.join(main_folder, 'new_test_50_run_acc_data.npz'))
-
-        test_outputs = test_data['outputs']
-        test_targets = np.zeros_like(test_outputs)
-        for i in range(test_outputs.shape[1]):
-            test_targets[:, i] = test_data['targets']
-
-        train_data = np.load(os.path.join(main_folder, 'validation_plot_data.npz'))
-        train_output = train_data['real_output'][train_data['mask']]
-        train_targets_npz = np.load(os.path.join(main_folder, 'targets.npz'))
-        train_targets = 1 - train_targets_npz['masked_targets']
-
-        acc_train, node_train = accuracy(train_output, train_targets, plot=os.path.join(main_folder, 'train_acc.jpg'), return_node=True)
-        acc_test_single = accuracy(test_outputs[:, 0], test_targets[:, 0], plot=os.path.join(main_folder, 'test_acc_single.jpg'), node=node_train, return_node=False)
-        acc_test_50 = accuracy(test_outputs.flatten(), test_targets.flatten(), plot=os.path.join(main_folder, 'test_acc_50.jpg'), node=node_train, return_node=False)
-    if arch == 'single':
-        import os
-        main_folder = '/home/unai/Documents/3-programming/brainspy-tasks/tmp/output/ring_nips/searcher_0.00625mV_2020_04_16_183324_single_newtrial/validation_hw_trainset/validation_2020_04_16_225147'
-
-        targets_data = np.load(os.path.join(main_folder, 'targets.npz'))
-
-        test = np.load(os.path.join(main_folder, 'outputs.npz'))
-        test_outputs = test['hardware_outputs'][test['mask']]
-        test_targets = np.zeros_like(test_outputs)
-        for i in range(test_outputs.shape[1]):
-            test_targets[:, i] = targets_data['test']
-
-        train = np.load(os.path.join(main_folder, 'validation_plot_data.npz'))
-        train_output = train['real_output'][train['mask']]
-        train_targets = 1 - targets_data['train']
-
-        acc_train, node_train = accuracy(train_output, train_targets, plot=os.path.join(main_folder, 'train_acc.jpg'), return_node=True)
-        acc_test_single = accuracy(test_outputs[:, 0], test_targets[:, 0], plot=os.path.join(main_folder, 'test_acc_single.jpg'), node=node_train, return_node=False)
-        acc_test_50 = accuracy(test_outputs.flatten(), test_targets.flatten(), plot=os.path.join(main_folder, 'test_acc_50.jpg'), node=node_train, return_node=False)
-
-        print(0)
+def accuracy(predictions, targets, node=None):
+    # TODO: If it is numpy transform it to torch
+    return perceptron(predictions, targets, node)
