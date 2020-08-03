@@ -72,7 +72,7 @@ def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=
                     prediction = node(data)
                     predicted_class = prediction > 0.
         if verbose:
-            looper.set_description(f' Epoch: {epoch}  Accuracy {acc}, loss: {cost.item()}')
+            looper.set_description(f'Epoch: {epoch+1}  Accuracy {acc}, loss: {cost.item()}')
 
     return best_accuracy, predicted_class, decision_boundary, node
 
