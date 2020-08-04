@@ -7,11 +7,9 @@ import os
 from torch.utils.data import SubsetRandomSampler
 
 
-def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_dir=None):
+def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_dir=None, return_best_model=True):
     train_losses, val_losses = [], []
     min_val_loss = np.inf
-    if save_dir is not None:
-        save_dir = os.path.join(save_dir, 'model.pt')
     looper = trange(epochs, desc=' Initialising')
     for epoch in looper:
         running_loss = 0
@@ -31,9 +29,9 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
             running_loss += loss.item()
 
         train_losses.append(running_loss / len(dataloaders[0]))
-        description = "Training Loss: {:.3f}.. ".format(train_losses[-1])
+        description = "Training Loss: {:.6f}.. ".format(train_losses[-1])
 
-        if dataloaders[1] is not None:
+        if dataloaders[1] is not None and len(dataloaders[1]) > 0:
             with torch.no_grad():
                 model.eval()
                 for inputs, targets in dataloaders[1]:
@@ -45,11 +43,11 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
             model.train()
 
             val_losses.append(val_loss / len(dataloaders[1]))
-            description += "Test Loss: {:.3f}.. ".format(val_losses[-1])
+            description += "Test Loss: {:.6f}.. ".format(val_losses[-1])
             if save_dir is not None and val_losses[-1] < min_val_loss:
                 min_val_loss = val_losses[-1]
                 description += ' Saving model ...'
-                torch.save(model, save_dir)
+                torch.save(model, os.path.join(save_dir, 'best_model.pt'))
         looper.set_description(description)
         if logger is not None and 'log_val_predictions' in dir(logger):
             logger.log_performance(train_losses, val_losses, epoch)
@@ -57,10 +55,12 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
         # TODO: Add a save instruction and a stopping criteria
         # if stopping_criteria(train_losses, val_losses):
         #     break
-    if save_dir is not None and val_losses == []:
-        torch.save(model, save_dir)
+
+    torch.save(model, os.path.join(save_dir, 'model.pt'))
     if logger is not None:
         logger.close()
+    if save_dir is not None and return_best_model:
+        model = torch.load(os.path.join(save_dir, 'best_model.pt'))
     return model, [torch.tensor(train_losses), torch.tensor(val_losses)]
 
 
