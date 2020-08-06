@@ -72,7 +72,7 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
 #     #plot_gate('[ 0 0 0 1]', True, predictions, targets, show_plots=True)
 #     return accuracy(predictions.squeeze(), targets.squeeze(), plot=None, return_node=True)
 
-def split(dataset, batch_size, num_workers, split_percentages=[0.8, 0.1, 0.1]):
+def split(dataset, batch_size, num_workers, sampler=SubsetRandomSampler, split_percentages=[0.8, 0.1, 0.1]):
     # Split percentages are expected to be in the following format: [80,10,10]
     percentages = np.array(split_percentages)
     assert np.sum(percentages) == 1, 'Split percentage does not sum up to 1'
@@ -86,12 +86,12 @@ def split(dataset, batch_size, num_workers, split_percentages=[0.8, 0.1, 0.1]):
     dev_index = indices[max_train_index:max_dev_index]
     test_index = indices[max_dev_index:max_test_index]
 
-    train_sampler = SubsetRandomSampler(train_index)
-    dev_sampler = SubsetRandomSampler(dev_index)
-    test_sampler = SubsetRandomSampler(test_index)
+    train_sampler = sampler(train_index)
+    dev_sampler = sampler(dev_index)
+    test_sampler = sampler(test_index)
 
     train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
     dev_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=dev_sampler, num_workers=num_workers)
     test_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=test_sampler, num_workers=num_workers)
 
-    return [train_loader, dev_loader, test_loader], [train_index, dev_index, test_loader]
+    return [train_loader, dev_loader, test_loader]  # , [train_index, dev_index, test_loader]
