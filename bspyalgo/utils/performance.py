@@ -42,41 +42,54 @@ def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=
         x_val = data[indices_val]
         t_val = targets[indices_val]
     else:
-        data = x_train = x_val = data
-        targets = t_train = t_val = targets
+        x_train = x_val = data
+        t_train = t_val = targets
     if node is None:
+        train = True
         node = nn.Linear(1, 1)
+    else:
+        train = False
     node = TorchUtils.format_tensor(node)
     loss = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(node.parameters(), lr=lrn_rate, betas=(0.999, 0.999))
     best_accuracy = -1
-    looper = trange(max_iters, desc='Calculating accuracy')
-    for epoch in looper:
-        for mb in batch_generator(len(x_train), mini_batch):
-            x_i, t_i = x_train[mb], t_train[mb]
-            optimizer.zero_grad()
-            y_i = node(x_i)
-            cost = loss(y_i, t_i)
-            cost.backward()
-            optimizer.step()
-        with torch.no_grad():
-            y = node(x_val)
-            labels = y > 0.
-            correct_labeled = torch.sum(labels == t_val)
-            acc = 100. * correct_labeled / len(t_val)
-            if acc > best_accuracy:
-                best_accuracy = acc
-                with torch.no_grad():
-                    w, b = [p for p in node.parameters()]
-                    decision_boundary = -b / w
-                    prediction = node(data)
-                    predicted_class = prediction > 0.
-        if verbose:
-            looper.set_description(f'Epoch: {epoch+1}  Accuracy {acc}, loss: {cost.item()}')
 
+    if train:
+        looper = trange(max_iters, desc='Calculating accuracy')
+        for epoch in looper:
+            for mb in batch_generator(len(x_train), mini_batch):
+                x_i, t_i = x_train[mb], t_train[mb]
+                optimizer.zero_grad()
+                y_i = node(x_i)
+                cost = loss(y_i, t_i)
+                cost.backward()
+                optimizer.step()
+            with torch.no_grad():
+                labels = node(t_val) > 0.
+                correct_labeled = torch.sum(labels == targets)
+                acc = 100. * correct_labeled / len(targets)
+                if acc > best_accuracy:
+                    best_accuracy = acc
+                    predicted_class, decision_boundary = evaluate_node(node, x_val, t_val, best_accuracy)
+            if verbose:
+                looper.set_description(f'Epoch: {epoch+1}  Accuracy {acc}, loss: {cost.item()}')
+    else:
+        labels = node(t_val) > 0.
+        correct_labeled = torch.sum(labels == targets)
+        best_accuracy = 100. * correct_labeled / len(targets)
+        predicted_class, decision_boundary = evaluate_node(node, x_val, t_val, best_accuracy)
+        print('Accuracy: ' + str(best_accuracy.item()))
     return best_accuracy, predicted_class, decision_boundary, node
 
 
+def evaluate_node(node, inputs, targets, best_accuracy):
+    with torch.no_grad():
+        w, b = [p for p in node.parameters()]
+        decision_boundary = -b / w
+        prediction = node(inputs)
+        predicted_class = prediction > 0.
+
+    return predicted_class, decision_boundary
 # def decision_pretrained(data, targets, node, validation=False, verbose=True):
 #     if validation:
 #         n_total = len(data)
@@ -125,8 +138,7 @@ def perceptron(inputs, targets, node=None):
     assert len(inputs.shape) != 1 and len(targets.shape) != 1, "Please unsqueeze inputs and targets"
     original_input_waveform = inputs.clone()
     inputs = (inputs - torch.mean(inputs, axis=0)) / torch.std(inputs, axis=0)
-    if node is None:
-        _accuracy, predictions, threshold, node = decision(inputs, targets, node)
+    _accuracy, predictions, threshold, node = decision(inputs, targets, node)
 
     results['inputs'] = original_input_waveform
     results['norm_inputs'] = inputs
