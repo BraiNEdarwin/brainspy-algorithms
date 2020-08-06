@@ -59,7 +59,7 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
     torch.save(model, os.path.join(save_dir, 'model.pt'))
     if logger is not None:
         logger.close()
-    if save_dir is not None and return_best_model:
+    if save_dir is not None and return_best_model and dataloaders[1] is not None and len(dataloaders[1]) > 0:
         model = torch.load(os.path.join(save_dir, 'best_model.pt'))
     return model, [torch.tensor(train_losses), torch.tensor(val_losses)]
 
