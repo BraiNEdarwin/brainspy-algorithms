@@ -7,7 +7,7 @@ Created on Fri Jun  1 11:42:27 2018
 """
 from __future__ import generator_stop
 import numpy as np
-import torch.nn as nn
+from torch import nn
 import torch
 from matplotlib import pyplot as plt
 from more_itertools import grouper
