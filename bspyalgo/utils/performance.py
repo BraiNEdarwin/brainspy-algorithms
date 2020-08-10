@@ -66,13 +66,13 @@ def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=
                 optimizer.step()
             with torch.no_grad():
                 labels = node(t_val) > 0.
-                correct_labeled = torch.sum(labels == targets)
-                acc = 100. * correct_labeled / len(targets)
+                correct_labelled = torch.sum(labels == targets)
+                acc = 100. * correct_labelled / len(targets)
                 if acc > best_accuracy:
                     best_accuracy = acc
                     predicted_class, decision_boundary = evaluate_node(node, x_val, t_val, best_accuracy)
             if verbose:
-                looper.set_description(f'Epoch: {epoch+1}  Accuracy {acc}, loss: {cost.item()}')
+                looper.set_description(f'Epoch: {epoch+1}  Accuracy {best_accuracy}, loss: {cost.item()}')
     else:
         labels = node(t_val) > 0.
         correct_labeled = torch.sum(labels == targets)
