@@ -15,8 +15,8 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
         for inputs, targets in dataloaders[0]:
 
             optimizer.zero_grad()
-            # if waveform_transforms is not None:
-            #    inputs, targets = waveform_transforms((inputs, targets))
+            if waveform_transforms is not None:
+                inputs, targets = waveform_transforms((inputs, targets))
             predictions = model(inputs)
             if logger is not None and 'log_ios_train' in dir(logger):
                 logger.log_ios_train(inputs, targets, predictions, epoch)
