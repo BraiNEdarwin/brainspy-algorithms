@@ -26,7 +26,7 @@ class DataToVoltageRange():
         return (inputs, data[1])
 
 
-class DataPointToPlateau():
+class DataPointsToPlateau():
 
     def __init__(self, configs):
         self.mgr = WaveformManager(configs)
