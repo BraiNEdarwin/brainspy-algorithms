@@ -38,3 +38,12 @@ class DataPointsToPlateau():
         targets = self.mgr.points_to_plateau(targets)
 
         return (inputs, targets)
+
+
+class PointsToPlateau():
+
+    def __init__(self, configs):
+        self.mgr = WaveformManager(configs)
+
+    def __call__(self, x):
+        return self.mgr.points_to_plateau(x)
