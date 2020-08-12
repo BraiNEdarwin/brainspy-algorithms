@@ -4,10 +4,8 @@ from tqdm import trange
 import numpy as np
 import os
 
-from torch.utils.data import SubsetRandomSampler
 
-
-def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_dir=None, return_best_model=True):
+def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_dir=None, return_best_model=True, waveform_transforms=None):
     train_losses, val_losses = [], []
     min_val_loss = np.inf
     looper = trange(epochs, desc=' Initialising')
@@ -17,6 +15,8 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
         for inputs, targets in dataloaders[0]:
 
             optimizer.zero_grad()
+            # if waveform_transforms is not None:
+            #    inputs, targets = waveform_transforms((inputs, targets))
             predictions = model(inputs)
             if logger is not None and 'log_ios_train' in dir(logger):
                 logger.log_ios_train(inputs, targets, predictions, epoch)
@@ -35,6 +35,8 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
             with torch.no_grad():
                 model.eval()
                 for inputs, targets in dataloaders[1]:
+                    if waveform_transforms is not None:
+                        inputs, targets = waveform_transforms((inputs, targets))
                     predictions = model(inputs)
                     if logger is not None and 'log_ios_val' in dir(logger):
                         logger.log_ios_val(inputs, targets, predictions)
@@ -71,27 +73,3 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
 #         predictions = model(inputs)
 #     #plot_gate('[ 0 0 0 1]', True, predictions, targets, show_plots=True)
 #     return accuracy(predictions.squeeze(), targets.squeeze(), plot=None, return_node=True)
-
-def split(dataset, batch_size, num_workers, sampler=SubsetRandomSampler, split_percentages=[0.8, 0.1, 0.1]):
-    # Split percentages are expected to be in the following format: [80,10,10]
-    percentages = np.array(split_percentages)
-    assert np.sum(percentages) == 1, 'Split percentage does not sum up to 1'
-    indices = list(range(len(dataset)))
-    np.random.shuffle(indices)
-    max_train_index = int(np.floor(percentages[0] * len(dataset)))
-    max_dev_index = int(np.floor((percentages[0] + percentages[1]) * len(dataset)))
-    max_test_index = int(np.floor(np.sum(percentages) * len(dataset)))
-
-    train_index = indices[:max_train_index]
-    dev_index = indices[max_train_index:max_dev_index]
-    test_index = indices[max_dev_index:max_test_index]
-
-    train_sampler = sampler(train_index)
-    dev_sampler = sampler(dev_index)
-    test_sampler = sampler(test_index)
-
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
-    dev_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=dev_sampler, num_workers=num_workers)
-    test_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=test_sampler, num_workers=num_workers)
-
-    return [train_loader, dev_loader, test_loader]  # , [train_index, dev_index, test_loader]
