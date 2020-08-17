@@ -2,11 +2,12 @@
 """
 Created on Wed Aug 21 13:14:52 2019
 
-@author: HCRuiz
+@author: HCRuiz and Unai Alegre
 """
+import torch
 import numpy as np
 from bspyalgo.utils.performance import perceptron
-
+from bspyproc.utils.pytorch import TorchUtils
 # TODO: implement corr_lin_fit (AF's last fitness function)?
 
 
@@ -29,11 +30,11 @@ def choose_fitness_function(fitness):
 
 def accuracy_fit(outputpool, target, clipvalue=np.inf):
     genomes = len(outputpool)
-    fitpool = np.zeros(genomes)
+    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
     for j in range(genomes):
         output = outputpool[j]
 
-        if np.any(np.abs(output) > clipvalue):
+        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
             acc = 0
             # print(f'Clipped at {clipvalue} nA')
         else:
@@ -49,17 +50,17 @@ def accuracy_fit(outputpool, target, clipvalue=np.inf):
 
 def corr_fit(outputpool, target, clipvalue=np.inf):
     genomes = len(outputpool)
-    fitpool = np.zeros(genomes)
+    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
     for j in range(genomes):
         output = outputpool[j]
-        if np.any(np.abs(output) > clipvalue):
+        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
             # print(f'Clipped at {clipvalue} nA')
             corr = -1
         else:
             x = output[:, np.newaxis]
             y = target[:, np.newaxis]
-            X = np.stack((x, y), axis=0)[:, :, 0]
-            corr = np.corrcoef(X)[0, 1]
+            X = torch.stack((x, y), axis=0)[:, :, 0]
+            corr = corrcoef(X)[0, 1]
 
         fitpool[j] = corr
     return fitpool
@@ -70,19 +71,51 @@ def corr_fit(outputpool, target, clipvalue=np.inf):
 
 def corrsig_fit(outputpool, target, clipvalue=np.inf):
     genomes = len(outputpool)
-    fitpool = np.zeros(genomes)
+    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
     for j in range(genomes):
         output = outputpool[j]
-        if np.any(np.abs(output) > clipvalue):
-            # print(f'Clipped at {clipvalue} nA')
+        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
+            # print(f'Clipped at {torch.abs(output)} nA')
             fit = -1
         else:
-            X = np.stack((output, target), axis=0)[:, :, 0]
-            corr = np.corrcoef(X)[0, 1]
+            x = torch.stack((output, target), axis=0).squeeze(dim=2)
+            corr = corrcoef(x)[0, 1]
             buff0 = target == 0
             buff1 = target == 1
-            sep = np.mean(output[buff1]) - np.mean(output[buff0])
-            sig = 1 / (1 + np.exp(-2 * (sep - 2)))
+            sep = output[buff1].mean() - output[buff0].mean()
+            sig = 1 / (1 + torch.exp(-2 * (sep - 2)))
             fit = corr * sig
         fitpool[j] = fit
     return fitpool
+
+
+def corrcoef(x):
+    """
+    Mimics `np.corrcoef`
+
+    Arguments
+    ---------
+    x : 2D torch.Tensor
+
+    Returns
+    -------
+    c : torch.Tensor
+        if x.size() = (5, 100), then return val will be of size (5,5)
+    """
+    # calculate covariance matrix of rows
+    mean_x = torch.mean(x, 1).unsqueeze(dim=1)
+    xm = x.sub(mean_x.expand_as(x))
+    c = xm.mm(xm.t())
+    c = c / (x.size(1) - 1)
+
+    # normalize covariance matrix
+    d = torch.diag(c)
+    stddev = torch.pow(d, 0.5)
+    c = c.div(stddev.expand_as(c))
+    c = c.div(stddev.expand_as(c).t())
+
+    # clamp between -1 and 1
+    # probably not necessary but numpy does it
+    c = torch.clamp(c, -1.0, 1.0)
+
+    return c
