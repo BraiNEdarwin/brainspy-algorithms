@@ -15,7 +15,10 @@ Created on Wed Aug 21 11:34:14 2019
 #from bspyalgo.utils.io import load_configs
 from bspyalgo.algorithms.gradient.core.losses import choose_loss_function
 from bspyalgo.algorithms.genetic.core.fitness import choose_fitness_function
-from bspyalgo.algorithms.gradient.core.optim import get_optimizer as mgr
+from bspyalgo.algorithms.gradient.core.optim import get_optimizer as get_gd_optimizer
+from bspyalgo.algorithms.genetic.core.optim import get_optimizer as get_ga_optimizer
+from bspyalgo.algorithms.gradient.fitter import train as gd
+from bspyalgo.algorithms.genetic.fitter import train as ga
 # TODO: Add chip platform
 # TODO: Add simulation platform
 # TODO: Target wave form as argument can be left out if output dimension is known internally
@@ -54,9 +57,17 @@ def get_criterion(configs):
 
 def get_optimizer(parameters, configs):
     if configs['type'] == 'gradient':
-        return mgr(parameters, configs)
+        return get_gd_optimizer(parameters, configs)
     elif configs['type'] == 'genetic':
-        print('There is no optimizer for the genetic algorithm')
-        return None
+        return get_ga_optimizer(parameters, configs)
+    else:
+        assert False, 'Unrecognised algorithm field in configs. It must have the value gradient or the value genetic.'
+
+
+def get_algorithm(configs):
+    if configs['type'] == 'gradient':
+        return gd
+    elif configs['type'] == 'genetic':
+        return ga
     else:
         assert False, 'Unrecognised algorithm field in configs. It must have the value gradient or the value genetic.'
