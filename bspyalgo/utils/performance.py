@@ -181,6 +181,6 @@ def corr_coeff_torch(x, y):
 # TODO: use data object to get the accuracy (see corr_coeff above)
 
 
-def accuracy(predictions, targets, node=None):
-    # TODO: If it is numpy transform it to torch
-    return perceptron(predictions, targets, node)
+# def accuracy(predictions, targets, node=None):
+#     # TODO: If it is numpy transform it to torch
+#     return perceptron(predictions, targets, node)
