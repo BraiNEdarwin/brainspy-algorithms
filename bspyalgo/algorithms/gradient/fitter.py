@@ -1,14 +1,13 @@
 import torch
-from bspyalgo.utils.performance import accuracy
 from tqdm import trange
 import numpy as np
 import os
 
 
-def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_dir=None, return_best_model=True, waveform_transforms=None):
+def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_dir=None, return_best_model=True, waveform_transforms=None):
     train_losses, val_losses = [], []
     min_val_loss = np.inf
-    looper = trange(epochs, desc=' Initialising')
+    looper = trange(configs['epochs'], desc=' Initialising')
     for epoch in looper:
         running_loss = 0
         val_loss = 0
@@ -63,7 +62,7 @@ def train(model, dataloaders, epochs, criterion, optimizer, logger=None, save_di
         logger.close()
     if save_dir is not None and return_best_model and dataloaders[1] is not None and len(dataloaders[1]) > 0:
         model = torch.load(os.path.join(save_dir, 'best_model.pt'))
-    return model, [torch.tensor(train_losses), torch.tensor(val_losses)]
+    return model, {'performance_history': [torch.tensor(train_losses), torch.tensor(val_losses)]}
 
 
 # def test(model, dataset):
