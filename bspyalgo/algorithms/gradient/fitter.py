@@ -48,7 +48,7 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
             if save_dir is not None and val_losses[-1] < min_val_loss:
                 min_val_loss = val_losses[-1]
                 description += ' Saving model ...'
-                torch.save(model, os.path.join(save_dir, 'best_model.pt'))
+                torch.save(model, os.path.join(save_dir, 'model.pt'))
         looper.set_description(description)
         if logger is not None and 'log_val_predictions' in dir(logger):
             logger.log_performance(train_losses, val_losses, epoch)
@@ -57,11 +57,12 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
         # if stopping_criteria(train_losses, val_losses):
         #     break
 
-    torch.save(model, os.path.join(save_dir, 'model.pt'))
     if logger is not None:
         logger.close()
     if save_dir is not None and return_best_model and dataloaders[1] is not None and len(dataloaders[1]) > 0:
-        model = torch.load(os.path.join(save_dir, 'best_model.pt'))
+        model = torch.load(os.path.join(save_dir, 'model.pt'))
+    else:
+        torch.save(model, os.path.join(save_dir, 'model.pt'))
     return model, {'performance_history': [torch.tensor(train_losses), torch.tensor(val_losses)]}
 
 

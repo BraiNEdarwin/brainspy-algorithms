@@ -58,7 +58,7 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
             best_correlation = correlation_history[-1]
             model.set_control_voltages(genome_history[best_result_index])
             if save_dir is not None:
-                torch.save(model, os.path.join(save_dir, 'best_model.pt'))
+                torch.save(model, os.path.join(save_dir, 'model.pt'))
         # looper.set_description("  Gen: " + str(epoch + 1) + status)
         # self.results['output_current_array'][gen, :, :] = current_state['outputs']
         # self.results['correlation'] = corr_coeff(self.results['best_output'][self.results['mask']].T, self.results['targets'][self.results['mask']].T)
