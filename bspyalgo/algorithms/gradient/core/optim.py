@@ -2,7 +2,8 @@ import torch
 import torch_optimizer as optim
 
 
-def get_optimizer(parameters, configs):
+def get_optimizer(model, configs):
+    parameters = filter(lambda p: p.requires_grad, model.parameters())
     if configs['optimizer'] == 'yogi':
         return get_yogi(parameters, configs)
     elif configs['optimizer'] == 'adam':
