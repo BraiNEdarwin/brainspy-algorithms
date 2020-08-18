@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 
-def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_dir=None, return_best_model=True, waveform_transforms=None):
+def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_dir=None, waveform_transforms=None, return_best_model=True):
     train_losses, val_losses = [], []
     min_val_loss = np.inf
     looper = trange(configs['epochs'], desc=' Initialising')
@@ -64,12 +64,3 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
     else:
         torch.save(model, os.path.join(save_dir, 'model.pt'))
     return model, {'performance_history': [torch.tensor(train_losses), torch.tensor(val_losses)]}
-
-
-# def test(model, dataset):
-#     with torch.no_grad():
-#         model.eval()
-#         inputs, targets = dataset[:]
-#         predictions = model(inputs)
-#     #plot_gate('[ 0 0 0 1]', True, predictions, targets, show_plots=True)
-#     return accuracy(predictions.squeeze(), targets.squeeze(), plot=None, return_node=True)

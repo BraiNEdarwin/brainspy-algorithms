@@ -6,24 +6,11 @@ Created on Wed Aug 21 13:14:52 2019
 """
 import torch
 import numpy as np
-from bspyalgo.utils.performance import perceptron
+from bspyalgo.algorithms.performance import perceptron
 from bspyproc.utils.pytorch import TorchUtils
+
 # TODO: implement corr_lin_fit (AF's last fitness function)?
 
-
-def choose_fitness_function(fitness):
-    '''Gets the fitness function used in GA from the module FitnessFunctions
-    The fitness functions must take two arguments, the outputs of the black-box and the target
-    and must return a numpy array of scores of size len(outputs).
-    '''
-    if fitness == 'corr_fit':
-        return corr_fit
-    elif fitness == 'accuracy_fit':
-        return accuracy_fit
-    elif fitness == 'corrsig_fit':
-        return corrsig_fit
-    else:
-        raise NotImplementedError(f"Fitness function {fitness} is not recognized!")
 
 # %% Accuracy of a perceptron as fitness: meanures separability
 
@@ -69,16 +56,16 @@ def corr_fit(outputpool, target, clipvalue=np.inf):
 # the correlation function. The sigmoid can be adapted by changing the function 'sig( , x)'
 
 
-def corrsig_fit(outputpool, target, clipvalue=np.inf):
+def corrsig_fit(outputpool, target, clipvalue=[-np.inf, np.inf]):
     genomes = len(outputpool)
     fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
     for j in range(genomes):
         output = outputpool[j]
         if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
-            # print(f'Clipped at {torch.abs(output)} nA')
+            #print(f'Clipped at {torch.abs(output)} nA')
             fit = -1
         else:
-            x = torch.stack((output, target), axis=0).squeeze(dim=2)
+            x = torch.stack((output, target[j]), axis=0).squeeze(dim=2)
             corr = corrcoef(x)[0, 1]
             buff0 = target == 0
             buff1 = target == 1
@@ -119,3 +106,57 @@ def corrcoef(x):
     c = torch.clamp(c, -1.0, 1.0)
 
     return c
+
+#### GD ###
+
+
+def corrsig(output, target):
+    corr = torch.mean((output - torch.mean(output)) * (target - torch.mean(target))) / \
+        (torch.std(output) * torch.std(target) + 1e-10)
+    x_high_min = torch.min(output[(target == 1)])
+    x_low_max = torch.max(output[(target == 0)])
+    delta = x_high_min - x_low_max
+    return (1.1 - corr) / torch.sigmoid((delta - 5) / 3)
+
+
+def sqrt_corrsig(output, target):
+    corr = torch.mean((output - torch.mean(output)) * (target - torch.mean(target))) / \
+        (torch.std(output) * torch.std(target) + 1e-10)
+    x_high_min = torch.min(output[(target == 1)])
+    x_low_max = torch.max(output[(target == 0)])
+    delta = x_high_min - x_low_max
+    # 5/3 works for 0.2 V gap
+    return (1. - corr)**(1 / 2) / torch.sigmoid((delta - 2) / 5)
+
+
+def fisher(output, target):
+    '''Separates classes irrespective of assignments.
+    Reliable, but insensitive to actual classes'''
+    x_high = output[(target == 1)]
+    x_low = output[(target == 0)]
+    m0, m1 = torch.mean(x_low), torch.mean(x_high)
+    s0, s1 = torch.var(x_low), torch.var(x_high)
+    mean_separation = (m1 - m0)**2
+    return -mean_separation / (s0 + s1)
+
+
+def fisher_added_corr(output, target):
+    x_high = output[(target == 1)]
+    x_low = output[(target == 0)]
+    m0, m1 = torch.mean(x_low), torch.mean(x_high)
+    s0, s1 = torch.var(x_low), torch.var(x_high)
+    mean_separation = (m1 - m0)**2
+    corr = torch.mean((output - torch.mean(output)) * (target - torch.mean(target))) / \
+        (torch.std(output) * torch.std(target) + 1e-10)
+    return (1 - corr) - 0.5 * mean_separation / (s0 + s1)
+
+
+def fisher_multipled_corr(output, target):
+    x_high = output[(target == 1)]
+    x_low = output[(target == 0)]
+    m0, m1 = torch.mean(x_low), torch.mean(x_high)
+    s0, s1 = torch.var(x_low), torch.var(x_high)
+    mean_separation = (m1 - m0)**2
+    corr = torch.mean((output - torch.mean(output)) * (target - torch.mean(target))) / \
+        (torch.std(output) * torch.std(target) + 1e-10)
+    return (1 - corr) * (s0 + s1) / mean_separation

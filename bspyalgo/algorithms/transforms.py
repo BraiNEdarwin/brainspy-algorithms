@@ -2,7 +2,7 @@ import numpy as np
 
 from bspyproc.utils.pytorch import TorchUtils
 from bspyproc.utils.waveform import WaveformManager
-from bspyproc.utils.transforms import get_map_to_voltage_vars
+from bspyproc.utils.electrodes import get_map_to_voltage_vars
 
 
 class DataToTensor():
@@ -34,8 +34,8 @@ class DataPointsToPlateau():
     def __call__(self, data):
         inputs, targets = data[0], data[1]
 
-        inputs = self.mgr.points_to_plateau(inputs)
-        targets = self.mgr.points_to_plateau(targets)
+        inputs = self.mgr.points_to_plateaus(inputs)
+        targets = self.mgr.points_to_plateaus(targets)
 
         return (inputs, targets)
 
@@ -46,4 +46,4 @@ class PointsToPlateau():
         self.mgr = WaveformManager(configs)
 
     def __call__(self, x):
-        return self.mgr.points_to_plateau(x)
+        return self.mgr.points_to_plateaus(x)

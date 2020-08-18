@@ -3,25 +3,8 @@ import torch
 import numpy as np
 from tqdm import trange
 
-from bspyalgo.utils.performance import corr_coeff_torch
+from bspyalgo.algorithms.performance import corr_coeff_torch
 from bspyproc.utils.pytorch import TorchUtils
-
-
-def init_dirs(base_dir, is_main=False):
-    if 'experiment_name' in self.configs:
-        main_folder_name = self.configs['experiment_name']
-    else:
-        main_folder_name = 'genetic_algorithm_data'
-    if self.is_main:
-        base_dir = create_directory_timestamp(base_dir, main_folder_name)
-    else:
-        base_dir = os.path.join(base_dir, main_folder_name)
-        create_directory(base_dir)
-    self.default_output_dir = os.path.join(base_dir, 'reproducibility')
-    create_directory(self.default_output_dir)
-    if self.configs['checkpoints']['use_checkpoints']:
-        self.default_checkpoints_dir = os.path.join(base_dir, 'checkpoints')
-        create_directory(self.default_checkpoints_dir)
 
 
 def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_dir=None, waveform_transforms=None, return_best_model=True):
@@ -35,27 +18,28 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
     genome_history = []
     performance_history = []
     correlation_history = []
-    outputs_history = []
-    status = ''
+    # outputs_history = []
+
     for epoch in looper:
         inputs, targets = dataloaders[0].dataset[:]
         outputs = evaluate_population(inputs, pool, model)
-        fitness = criterion(outputs, targets, clipvalue=model.get_clipping_value())
+        fitness = criterion(outputs, targets)  # , clipvalue = model.get_clipping_value())
 
         # log results
         no_nan_mask = fitness == fitness
         current_best_index = torch.argmax(fitness[no_nan_mask])  # Best output index ignoring nan values
 
         best_current_output = outputs[no_nan_mask][current_best_index]
-        performance_history.append(fitness[no_nan_mask][current_best_index])
-        outputs_history.append(best_current_output)
-        genome_history.append(optimizer.pool[no_nan_mask][current_best_index])
-        correlation_history.append(corr_coeff_torch(best_current_output.T, targets.T))
+        performance_history.append(fitness[no_nan_mask][current_best_index].detach().cpu())
+
+        genome_history.append(optimizer.pool[no_nan_mask][current_best_index].detach().cpu())
+        correlation_history.append(corr_coeff_torch(best_current_output.T, targets.T).detach().cpu())
         looper.set_description("  Gen: " + str(epoch + 1) + ". Max fitness: " + str(performance_history[-1].item()) + ". Corr: " + str(correlation_history[-1].item()))
         if performance_history[-1] > best_fitness:
             best_fitness = performance_history[-1]
             best_result_index = epoch
-            best_correlation = correlation_history[-1]
+            best_correlation = correlation_history[-1].detach().cpu()
+            best_output = best_current_output.detach().cpu()
             model.set_control_voltages(genome_history[best_result_index])
             if save_dir is not None:
                 torch.save(model, os.path.join(save_dir, 'model.pt'))
@@ -74,7 +58,8 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
 
         pool = optimizer.step(fitness)
 
-    return model, {'best_result_index': best_result_index, 'genome_history': genome_history, 'performance_history': performance_history, 'correlation_history': correlation_history, 'outputs_history': outputs_history}
+    model.close()
+    return model, {'best_result_index': best_result_index, 'genome_history': genome_history, 'performance_history': performance_history, 'correlation_history': correlation_history, 'best_output': best_output}
 
 
 def evaluate_population(inputs, pool, model):
@@ -91,12 +76,15 @@ def evaluate_population(inputs, pool, model):
     return output_popul
 
 
-def close(model):
-    """
-    Experiments in hardware require that the connection with the drivers is closed.
-    This method helps closing this connection when necessary.
-    """
-    try:
-        model.close()
-    except AttributeError:
-        print('There is no closing function for the current processor configuration. Skipping.')
+def evaluate_criterion(outputs_pool, target, criterion, default_value=-1, clipvalue=[-np.inf, np.inf]):
+    genome_no = len(outputs_pool)
+    criterion_pool = TorchUtils.format_tensor(torch.zeros(genome_no))
+    for j in range(genome_no):
+        output = outputs_pool[j]
+        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
+            # print(f'Clipped at {clipvalue} nA')
+            result = default_value
+        else:
+            result = criterion(output, target)
+        criterion_pool[j] = result
+    return criterion_pool

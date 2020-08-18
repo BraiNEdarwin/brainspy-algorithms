@@ -16,20 +16,6 @@ Created on Thu May 16 18:16:36 2019
 """
 
 
-def get_optimizer(model, configs):
-
-    parameters = filter(lambda p: p.requires_grad, model.parameters())
-    model.get_control_ranges()
-    if configs['optimizer'] == 'genetic':
-        # TODO: get gene ranges from model
-        return GeneticOptimizer(model.get_control_ranges(), configs['partition'], configs['mutation_rate'], configs['epochs'])
-    elif configs['optimizer'] == 'elm':
-        print('ELM optimizer not implemented yet')
-        # return get_adam(parameters, configs)
-    else:
-        assert False, "Optimiser name {configs['optimizer']} not recognised. Please try"
-
-
 class GeneticOptimizer:
 
     def __init__(self, gene_ranges, partition, mutation_rate, epochs):
@@ -39,13 +25,7 @@ class GeneticOptimizer:
         self.gene_range = gene_ranges
         self.partition = partition
         self.genome_no = sum(self.partition)
-        self.pool = self.init_pool()
-
-    def init_pool(self):
-        pool = TorchUtils.format_tensor(torch.zeros((self.genome_no, len(self.gene_range))))  # Dimensions (Genome number, gene number)
-        for i in range(0, len(self.gene_range)):
-            pool[:, i] = TorchUtils.format_tensor(uniform(self.gene_range[i][0], self.gene_range[i][1]).sample((self.genome_no,)))
-        return pool
+        self.pool = self._init_pool()
 
     def step(self, fitness):
         # creates a pool with the next generation
@@ -71,6 +51,12 @@ class GeneticOptimizer:
         # self.pool = self.newpool.copy()
         self.epoch += 1
         return self.pool
+
+    def _init_pool(self):
+        pool = TorchUtils.format_tensor(torch.zeros((self.genome_no, len(self.gene_range))))  # Dimensions (Genome number, gene number)
+        for i in range(0, len(self.gene_range)):
+            pool[:, i] = TorchUtils.format_tensor(uniform(self.gene_range[i][0], self.gene_range[i][1]).sample((self.genome_no,)))
+        return pool
 
     def crossover(self, new_pool):
         # length = self.len(fitness)
