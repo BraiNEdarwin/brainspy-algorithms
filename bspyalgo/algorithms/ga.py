@@ -23,7 +23,7 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
     for epoch in looper:
         inputs, targets = dataloaders[0].dataset[:]
         outputs = evaluate_population(inputs, pool, model)
-        fitness = criterion(outputs, targets)  # , clipvalue = model.get_clipping_value())
+        fitness = evaluate_criterion(outputs, targets, criterion, clipvalue=model.get_clipping_value())
 
         # log results
         no_nan_mask = fitness == fitness
@@ -76,14 +76,14 @@ def evaluate_population(inputs, pool, model):
     return output_popul
 
 
-def evaluate_criterion(outputs_pool, target, criterion, default_value=-1, clipvalue=[-np.inf, np.inf]):
+def evaluate_criterion(outputs_pool, target, criterion, clipvalue=[-np.inf, np.inf]):
     genome_no = len(outputs_pool)
     criterion_pool = TorchUtils.format_tensor(torch.zeros(genome_no))
     for j in range(genome_no):
         output = outputs_pool[j]
         if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
             # print(f'Clipped at {clipvalue} nA')
-            result = default_value
+            result = criterion(None, None, default_value=True)
         else:
             result = criterion(output, target)
         criterion_pool[j] = result
