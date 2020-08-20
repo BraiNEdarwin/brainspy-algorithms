@@ -12,68 +12,49 @@ from bspyproc.utils.pytorch import TorchUtils
 # TODO: implement corr_lin_fit (AF's last fitness function)?
 
 
-# %% Accuracy of a perceptron as fitness: meanures separability
+# %% Accuracy of a perceptron as fitness: measures separability
 
 
-def accuracy_fit(outputpool, target, clipvalue=np.inf):
-    genomes = len(outputpool)
-    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
-    for j in range(genomes):
-        output = outputpool[j]
-
-        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
-            acc = 0
-            # print(f'Clipped at {clipvalue} nA')
-        else:
-            x = output[:, np.newaxis]
-            y = target[:, np.newaxis]
-            acc, _, _ = perceptron(x, y)
-
-        fitpool[j] = acc
-    return fitpool
+def accuracy_fit(output, target, default_value=False):
+    if default_value:
+        return 0
+        # print(f'Clipped at {clipvalue} nA')
+    else:
+        x = output[:, np.newaxis]
+        y = target[:, np.newaxis]
+        acc, _, _ = perceptron(x, y)
+        return acc
 
 # %% Correlation between output and target: measures similarity
 
 
-def corr_fit(outputpool, target, clipvalue=np.inf):
-    genomes = len(outputpool)
-    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
-    for j in range(genomes):
-        output = outputpool[j]
-        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
-            # print(f'Clipped at {clipvalue} nA')
-            corr = -1
-        else:
-            x = output[:, np.newaxis]
-            y = target[:, np.newaxis]
-            X = torch.stack((x, y), axis=0)[:, :, 0]
-            corr = corrcoef(X)[0, 1]
+def corr_fit(output, target, default_value=False):
+    if default_value:
+        # print(f'Clipped at {clipvalue} nA')
+        return -1
+    else:
+        x = output[:, np.newaxis]
+        y = target[:, np.newaxis]
+        X = torch.stack((x, y), axis=0)[:, :, 0]
+        return corrcoef(X)[0, 1]
 
-        fitpool[j] = corr
-    return fitpool
 
 # %% Combination of a sigmoid with pre-defined separation threshold (2.5 nA) and
 # the correlation function. The sigmoid can be adapted by changing the function 'sig( , x)'
 
 
-def corrsig_fit(outputpool, target, clipvalue=[-np.inf, np.inf]):
-    genomes = len(outputpool)
-    fitpool = TorchUtils.format_tensor(torch.zeros(genomes))
-    for j in range(genomes):
-        output = outputpool[j]
-        if torch.any(output < clipvalue[0]) or torch.any(output > clipvalue[1]):
-            #print(f'Clipped at {torch.abs(output)} nA')
-            fit = -1
-        else:
-            x = torch.stack((output, target[j]), axis=0).squeeze(dim=2)
-            corr = corrcoef(x)[0, 1]
-            buff0 = target == 0
-            buff1 = target == 1
-            sep = output[buff1].mean() - output[buff0].mean()
-            sig = 1 / (1 + torch.exp(-2 * (sep - 2)))
-            fit = corr * sig
-        fitpool[j] = fit
-    return fitpool
+def corrsig_fit(output, target, default_value=False):
+    if default_value:
+        # print(f'Clipped at {torch.abs(output)} nA')
+        return -1
+    else:
+        x = torch.stack((output, target), axis=0).squeeze(dim=2)
+        corr = corrcoef(x)[0, 1]
+        buff0 = target == 0
+        buff1 = target == 1
+        sep = output[buff1].mean() - output[buff0].mean()
+        sig = 1 / (1 + torch.exp(-2 * (sep - 2)))
+        return corr * sig
 
 
 def corrcoef(x):
@@ -160,3 +141,11 @@ def fisher_multipled_corr(output, target):
     corr = torch.mean((output - torch.mean(output)) * (target - torch.mean(target))) / \
         (torch.std(output) * torch.std(target) + 1e-10)
     return (1 - corr) * (s0 + s1) / mean_separation
+
+
+def corr_coeff(x, y):
+    # TODO: More efficient implementation in Torch of this function
+    x = TorchUtils.get_numpy_from_tensor(x)
+    y = TorchUtils.get_numpy_from_tensor(y)
+    result = np.corrcoef(np.concatenate((x, y), axis=0))[0, 1]
+    return TorchUtils.get_tensor_from_numpy(result)
