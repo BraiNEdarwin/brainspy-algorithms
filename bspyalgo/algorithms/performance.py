@@ -46,11 +46,11 @@ def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=
         t_train = t_val = targets
     if node is None:
         train = True
-        node = nn.Linear(1, 1)
+        node = Perceptron()  # nn.Linear(1, 1)
     else:
         train = False
     node = TorchUtils.format_tensor(node)
-    loss = torch.nn.BCEWithLogitsLoss()
+    loss = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(node.parameters(), lr=lrn_rate, betas=(0.999, 0.999))
     best_accuracy = -1
 
@@ -65,12 +65,15 @@ def decision(data, targets, node=None, lrn_rate=0.0007, mini_batch=8, max_iters=
                 cost.backward()
                 optimizer.step()
             with torch.no_grad():
-                labels = node(t_val) > 0.
+                labels = node(x_val) > 0.5
                 correct_labelled = torch.sum(labels == targets)
                 acc = 100. * correct_labelled / len(targets)
                 if acc > best_accuracy:
                     best_accuracy = acc
                     predicted_class, decision_boundary = evaluate_node(node, x_val, t_val, best_accuracy)
+                    if best_accuracy >= 100.:
+                        looper.set_description(f'Reached 100/% accuracy. Stopping at Epoch: {epoch+1}  Accuracy {best_accuracy}, loss: {cost.item()}')
+                        break
             if verbose:
                 looper.set_description(f'Epoch: {epoch+1}  Accuracy {best_accuracy}, loss: {cost.item()}')
     else:
@@ -87,7 +90,7 @@ def evaluate_node(node, inputs, targets, best_accuracy):
         w, b = [p for p in node.parameters()]
         decision_boundary = -b / w
         prediction = node(inputs)
-        predicted_class = prediction > 0.
+        predicted_class = prediction > 0.5
 
     return predicted_class, decision_boundary
 # def decision_pretrained(data, targets, node, validation=False, verbose=True):
@@ -131,8 +134,8 @@ def perceptron(inputs, targets, node=None):
     # Normalizes the data; it is assumed that the target_waveform has binary values
     # if isinstance(input_waveform, torch.Tensor):
     #     input_waveform = input_waveform.detach().cpu().numpy()
-    inputs = TorchUtils.format_tensor(inputs)
-    targets = TorchUtils.format_tensor(targets)
+    #inputs = TorchUtils.format_tensor(inputs)
+    #targets = TorchUtils.format_tensor(targets)
 
     results = {}
     assert len(inputs.shape) != 1 and len(targets.shape) != 1, "Please unsqueeze inputs and targets"
@@ -151,7 +154,7 @@ def perceptron(inputs, targets, node=None):
     return results  # _accuracy, predictions, threshold, node
 
 
-def plot_perceptron(results, save_dir=None, show_plot=False):
+def plot_perceptron(results, save_dir=None, show_plot=False, name='train'):
     fig = plt.figure()
     plt.title(f"Accuracy: {results['accuracy_value']:.2f} %")
     plt.plot(TorchUtils.get_numpy_from_tensor(results['norm_inputs']), label='Norm. Waveform')
@@ -163,7 +166,7 @@ def plot_perceptron(results, save_dir=None, show_plot=False):
     if show_plot:
         plt.show()
     if save_dir is not None:
-        plt.savefig(os.path.join(save_dir, 'accuracy.jpg'))
+        plt.savefig(os.path.join(save_dir, name + '_accuracy.jpg'))
     plt.close()
     return fig
 
@@ -180,6 +183,17 @@ def corr_coeff_torch(x, y):
 
 # TODO: use data object to get the accuracy (see corr_coeff above)
 
+
+class Perceptron(torch.nn.Module):
+    def __init__(self, activation=torch.nn.Sigmoid()):
+        super(Perceptron, self).__init__()
+        self.linear = nn.Linear(1, 1)
+        self.activation = activation
+
+    def forward(self, x):
+        x = self.linear(x)
+        x = self.activation(x)
+        return x
 
 # def accuracy(predictions, targets, node=None):
 #     # TODO: If it is numpy transform it to torch
