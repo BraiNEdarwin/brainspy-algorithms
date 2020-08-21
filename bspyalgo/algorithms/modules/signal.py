@@ -6,12 +6,12 @@ Created on Wed Aug 21 13:14:52 2019
 """
 import torch
 import numpy as np
-from bspyalgo.algorithms.performance.accuracy import perceptron
+from bspyalgo.algorithms.modules.performance.accuracy import get_accuracy
 from bspyproc.utils.pytorch import TorchUtils
 
 # TODO: implement corr_lin_fit (AF's last fitness function)?
 
-# Set of functions to measure separability and similarity of signals
+# Description of the file: Set of functions to measure separability and similarity of signals
 
 # %% Accuracy of a perceptron as fitness: measures separability
 
@@ -21,9 +21,10 @@ def accuracy_fit(output, target, default_value=False):
         return 0
         # print(f'Clipped at {clipvalue} nA')
     else:
+        # TODO: make adding an axis an assertion
         x = output[:, np.newaxis]
         y = target[:, np.newaxis]
-        acc, _, _ = perceptron(x, y)
+        acc, _, _ = get_accuracy(x, y)
         return acc
 
 # %% Correlation between output and target: measures similarity
@@ -34,6 +35,7 @@ def corr_fit(output, target, default_value=False):
         # print(f'Clipped at {clipvalue} nA')
         return -1
     else:
+        # TODO: make adding an axis an assertion
         x = output[:, np.newaxis]
         y = target[:, np.newaxis]
         X = torch.stack((x, y), axis=0)[:, :, 0]

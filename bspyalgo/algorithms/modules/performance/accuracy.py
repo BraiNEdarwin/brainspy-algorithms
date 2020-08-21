@@ -10,12 +10,11 @@ Created on Fri Jun  1 11:42:27 2018
 import os
 import torch
 import numpy as np
-from torch import nn
 from tqdm import trange
 import matplotlib.pyplot as plt
 from torch.utils.data import random_split, SubsetRandomSampler
 
-from bspyalgo.algorithms.performance.perceptron import Perceptron, PerceptronDataset
+from bspyalgo.algorithms.modules.performance.perceptron import Perceptron, PerceptronDataset
 from bspyproc.utils.pytorch import TorchUtils
 
 
@@ -45,7 +44,7 @@ def get_accuracy(inputs, targets, split=[1, 0], node=None):
         if len(dataloaders[1]) == 0:
             dataloaders[1] = dataloaders[0]
         # Train the perceptron
-        accuracy, predictions, threshold, node = train_perceptron(dataloaders, perceptron)
+        accuracy, predictions, threshold, node = train_perceptron(dataloaders, node)
         print('Best accuracy: ' + str(accuracy.item()))
     else:
         accuracy, predicted_class = evaluate_accuracy(results['norm_inputs'], results['targets'], node)
