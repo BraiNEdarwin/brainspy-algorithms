@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from tqdm import trange
 
-from bspyalgo.algorithms.performance import corr_coeff_torch
+from bspyalgo.algorithms.criterion import corr_coeff
 from bspyproc.utils.pytorch import TorchUtils
 
 
@@ -33,7 +33,7 @@ def train(model, dataloaders, criterion, optimizer, configs, logger=None, save_d
         performance_history.append(fitness[no_nan_mask][current_best_index].detach().cpu())
 
         genome_history.append(optimizer.pool[no_nan_mask][current_best_index].detach().cpu())
-        correlation_history.append(corr_coeff_torch(best_current_output.T, targets.T).detach().cpu())
+        correlation_history.append(corr_coeff(best_current_output.T, targets.T).detach().cpu())
         looper.set_description("  Gen: " + str(epoch + 1) + ". Max fitness: " + str(performance_history[-1].item()) + ". Corr: " + str(correlation_history[-1].item()))
         if performance_history[-1] > best_fitness:
             best_fitness = performance_history[-1]

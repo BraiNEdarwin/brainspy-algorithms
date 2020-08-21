@@ -6,11 +6,12 @@ Created on Wed Aug 21 13:14:52 2019
 """
 import torch
 import numpy as np
-from bspyalgo.algorithms.performance import perceptron
+from bspyalgo.algorithms.performance.accuracy import perceptron
 from bspyproc.utils.pytorch import TorchUtils
 
 # TODO: implement corr_lin_fit (AF's last fitness function)?
 
+# Set of functions to measure separability and similarity of signals
 
 # %% Accuracy of a perceptron as fitness: measures separability
 

@@ -13,12 +13,13 @@ import numpy as np
 from torch import nn
 from tqdm import trange
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, random_split, SubsetRandomSampler
+from torch.utils.data import random_split, SubsetRandomSampler
 
+from bspyalgo.algorithms.performance.perceptron import Perceptron, PerceptronDataset
 from bspyproc.utils.pytorch import TorchUtils
 
 
-def perceptron(inputs, targets, split=[1, 0], node=None):
+def get_accuracy(inputs, targets, split=[1, 0], node=None):
     # Assumes that the input_waveform and the target_waveform have the shape (n_total,1)
     # Normalizes the data; it is assumed that the target_waveform has binary values
 
@@ -42,7 +43,7 @@ def perceptron(inputs, targets, split=[1, 0], node=None):
         dataset = PerceptronDataset(results['norm_inputs'], results['targets'])
         dataloaders = random_split(dataset, split)
         if len(dataloaders[1]) == 0:
-            dataloaders[1] == dataloaders[0]
+            dataloaders[1] = dataloaders[0]
         # Train the perceptron
         accuracy, predictions, threshold, node = train_perceptron(dataloaders, perceptron)
         print('Best accuracy: ' + str(accuracy.item()))
@@ -59,18 +60,6 @@ def perceptron(inputs, targets, split=[1, 0], node=None):
     results['accuracy_value'] = accuracy
 
     return results
-
-
-# def batch_generator(nr_samples, batch):
-#     batches = grouper(np.random.permutation(nr_samples), batch)
-#     while True:
-#         try:
-#             indices = list(next(batches))
-#             if None in indices:
-#                 indices = [index for index in indices if index is not None]
-#             yield torch.tensor(indices, dtype=torch.int64)
-#         except StopIteration:
-#             return
 
 
 def train_perceptron(dataloaders, node=None, lrn_rate=0.0007, mini_batch=8, epochs=100, validation=False, verbose=True):
@@ -132,31 +121,3 @@ def plot_perceptron(results, save_dir=None, show_plot=False, name='train'):
         plt.savefig(os.path.join(save_dir, name + '_accuracy.jpg'))
     plt.close()
     return fig
-
-
-class Perceptron(torch.nn.Module):
-    def __init__(self, activation=torch.nn.Sigmoid()):
-        super(Perceptron, self).__init__()
-        self.linear = nn.Linear(1, 1)
-        self.activation = activation
-
-    def forward(self, x):
-        x = self.linear(x)
-        x = self.activation(x)
-        return x
-
-
-class PerceptronDataset(Dataset):
-
-    # TODO: use data object to get the accuracy (see corr_coeff above)
-    def __init__(self, inputs, targets):
-        # Normalise inputs
-        assert len(inputs) > 10
-        self.inputs = inputs
-        self.targets = targets
-
-    def __getitem__(self, index):
-        inputs = self.inputs[index, :]
-        targets = self.targets[index, :]
-
-        return (inputs, targets)
