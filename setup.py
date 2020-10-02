@@ -11,7 +11,8 @@ setup(name='brainspy-algorithms',
       install_requires=[
           'pyjson',
           'tqdm',
-          'torch-optimizer'
+          'torch-optimizer',
+          'tensorboard'
       ],
       python_requires='~=3.8.1',
       zip_safe=False)
