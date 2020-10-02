@@ -1,4 +1,4 @@
-# THIS PROJECT IS DEPRECATED IT IS NO LONGER USED NOR MAINTAINED. PLEASE VISIT [BRAINS-PY](https://github.com/braiNEdarwin/brains-py) FOR MORE INFORMATION
+# THIS PROJECT IS DEPRECATED IT IS NO LONGER USED NOR MAINTAINED. IT HAS BEEN MERGED WITH THE MAIN BRAINS-PY LIBRARY. PLEASE VISIT [BRAINS-PY](https://github.com/braiNEdarwin/brains-py) FOR MORE INFORMATION
 
 ## brainspy-algorithms
 Main optimisation algorithms used for training boron-doped silicon chips both in hardware and with surrogate models.
